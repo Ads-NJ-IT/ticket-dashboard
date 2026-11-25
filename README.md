@@ -9,7 +9,9 @@ A Tampermonkey userscript that shows open and pending Freshservice tickets per t
 4. Optional: install the page as an app (Edge: Apps > Install this site as an app. Chrome: Cast, save and share > Create shortcut > Open as window).
 
 ## Settings
-Settings (top right) holds the refresh interval, color limits, and which team each tech is on (US, PH or Hidden). Settings are saved per browser. Use **Copy settings** and **Paste settings** to move a setup to another computer.
+**Pop out** (Chrome and Edge) opens the dashboard in a small floating window that stays on top of other windows. Close it to bring the dashboard back.
+
+Settings (top right) holds the refresh interval, card height, color limits, and which team each tech is on (US, PH or Hidden). Settings are saved per browser. Use **Copy settings** and **Paste settings** to move a setup to another computer.
 
 ## How it works
 Each refresh reads all Open, Pending and Pending Customer Reply tickets in the My Team workspace, 100 per call (about 6 calls), through the same endpoints the Freshservice website uses. It only reads. Nothing is sent anywhere except Freshservice.

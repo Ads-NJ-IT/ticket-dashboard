@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.1.0
+// @version      1.2.0
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -27,12 +27,15 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ticket Dashboard</title><style>' + CSS + '</style></head>' +
     '<body><main id="fit">' +
     '<div class="top"><div><h1>Ticket Dashboard</h1><div class="status" id="status"></div><div class="status" id="count"></div></div>' +
-    '<div class="btns"><button class="btn" id="refresh" type="button">Refresh</button><button class="btn" id="gear" type="button">Settings</button></div></div>' +
+    '<div class="btns"><button class="btn" id="refresh" type="button">Refresh</button><button class="btn" id="gear" type="button">Settings</button><button class="btn" id="pop" type="button" hidden>Pop out</button></div></div>' +
     '<div class="tiles" id="tiles"></div>' +
     '<div class="grid" id="gridUnas"></div><h2 id="teamHead"></h2><div class="grid" id="gridTeam"></div><h2 id="phHead"></h2><div class="grid" id="gridPh"></div>' +
     '</main><div class="panel" id="settings" hidden></div><div class="panel" id="panel" hidden></div></body>';
 
-  function $(id) { return document.getElementById(id); }
+  /* While popped out, the dashboard lives in a floating picture-in-picture window. view is whichever window shows it. */
+  var pip = null;
+  function view() { return pip || window; }
+  function $(id) { return view().document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
   function clock(ms) { return new Date(ms).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }); }
@@ -254,7 +257,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
   var fit = $("fit"), GAP = 8;
   var grids = ["gridUnas", "gridTeam", "gridPh"].map($);
   function layout() {
-    var vw = window.innerWidth, vh = window.innerHeight;
+    var vw = view().innerWidth, vh = view().innerHeight;
     if (!vw || !vh) return;
     var counts = grids.map(function (g) { return g.children.length; });
     fit.style.setProperty("--tcols", vw >= 480 ? 4 : 2);
@@ -263,7 +266,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var cardsH = grids.reduce(function (s, g) { return s + g.offsetHeight; }, 0);
     var fixed = fit.offsetHeight - cardsH;
     fit.style.height = "";
-    var cs = getComputedStyle(fit);
+    var cs = view().getComputedStyle(fit);
     var W = fit.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight), best = null;
     for (var c = 1; c <= 12; c++) {
       var rows = counts.map(function (n) { return Math.max(1, Math.ceil(n / c)); });
@@ -281,16 +284,47 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     fit.style.setProperty("--rowh", Math.floor(best.rh) + "px");
     fit.querySelectorAll(".name").forEach(function (n) {
       n.style.fontSize = "";
-      if (n.scrollWidth > n.clientWidth + 1) n.style.fontSize = Math.max(8, parseFloat(getComputedStyle(n).fontSize) * n.clientWidth / n.scrollWidth * 0.98) + "px";
+      if (n.scrollWidth > n.clientWidth + 1) n.style.fontSize = Math.max(8, parseFloat(view().getComputedStyle(n).fontSize) * n.clientWidth / n.scrollWidth * 0.98) + "px";
     });
   }
 
   $("refresh").addEventListener("click", pull);
   $("gear").addEventListener("click", function () { var sp = $("settings"); if (sp.hidden) { buildSettings(); sp.hidden = false; } else sp.hidden = true; });
   window.addEventListener("resize", function () { requestAnimationFrame(layout); });
+
+  /* Pop out: move the dashboard into an always-on-top window (Chrome and Edge 116+). */
+  var popBtn = $("pop");
+  if ("documentPictureInPicture" in window) popBtn.hidden = false;
+  popBtn.addEventListener("click", async function () {
+    if (pip) { pip.close(); return; }
+    try {
+      var w = await window.documentPictureInPicture.requestWindow({ width: store("td-popw") || 460, height: store("td-poph") || 640 });
+      var st = w.document.createElement("style"); st.textContent = CSS; w.document.head.appendChild(st);
+      w.document.title = "Ticket Dashboard";
+      ["fit", "settings", "panel"].forEach(function (id) { w.document.body.appendChild(document.getElementById(id)); });
+      pip = w;
+      popBtn.textContent = "Pop in";
+      document.body.appendChild(el("div", "pmsg", "Ticket Dashboard is popped out. Close the floating window to bring it back here."));
+      w.addEventListener("resize", function () {
+        store("td-popw", w.innerWidth); store("td-poph", w.innerHeight);
+        requestAnimationFrame(layout);
+      });
+      w.addEventListener("pagehide", function () {
+        document.body.textContent = "";
+        ["fit", "settings", "panel"].forEach(function (id) { document.body.appendChild(w.document.getElementById(id)); });
+        pip = null;
+        popBtn.textContent = "Pop out";
+        layout();
+      });
+      layout();
+    } catch (e) {
+      err = "Could not pop out: " + (e && e.message ? e.message : e);
+      paintStatus();
+    }
+  });
   setInterval(function () {
     paintStatus();
-    if (autoSec > 0 && !busy && Date.now() >= nextAt && !document.hidden) pull();
+    if (autoSec > 0 && !busy && Date.now() >= nextAt && (pip || !document.hidden)) pull();
   }, 1000);
   render();
 })();
