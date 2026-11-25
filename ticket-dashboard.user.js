@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.5.0
+// @version      1.6.0
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -27,7 +27,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     '<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Ticket Dashboard</title><style>' + CSS + '</style></head>' +
     '<body><main id="fit">' +
     '<div class="top"><div><h1>Ticket Dashboard</h1><div class="status" id="status"></div><div class="status" id="count"></div></div>' +
-    '<div class="btns"><input class="search" id="search" type="search" placeholder="Search open tickets" autocomplete="off"><button class="btn" id="refresh" type="button">Refresh</button><button class="btn" id="gear" type="button">Settings</button><button class="btn" id="pop" type="button" hidden>Pop out</button></div></div>' +
+    '<div class="btns"><input class="search" id="search" type="search" placeholder="Search open tickets" autocomplete="off"><button class="btn" id="refresh" type="button">Refresh</button><button class="btn" id="theme" type="button" title="Switch light or dark mode">Dark</button><button class="btn" id="gear" type="button">Settings</button><button class="btn" id="pop" type="button" hidden>Pop out</button></div></div>' +
     '<div class="tiles" id="tiles"></div>' +
     '<div class="grid" id="gridUnas"></div><h2 id="teamHead"></h2><div class="grid" id="gridTeam"></div><h2 id="phHead"></h2><div class="grid" id="gridPh"></div>' +
     '</main><div class="panel" id="settings" hidden></div><div class="panel" id="panel" hidden></div></body>';
@@ -50,6 +50,12 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
   var order = store("td-order") || [];         /* agent ids in your order */
   var shown = [];                              /* agent ids in the order they are on screen */
   var dragId = null;
+  var theme = store("td-theme") || "system";  /* "system", "light" or "dark" */
+  function isDark() { return theme === "dark" || (theme === "system" && window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches); }
+  function applyTheme() {
+    [document, pip && pip.document].forEach(function (d) { if (d) { if (theme === "system") d.documentElement.removeAttribute("data-theme"); else d.documentElement.setAttribute("data-theme", theme); } });
+    var b = $("theme"); if (b) b.textContent = isDark() ? "Light" : "Dark";
+  }
   var cardH = store("td-cardh"); if (typeof cardH !== "number") cardH = 110;  /* max card height in px, 0 fills the window */
   var tickets = store("td-tickets") || null, pulledAt = store("td-at") || 0;
   var teams = store("td-teams") || {};  /* agent id -> "ph" | "hide"; missing means US team */
@@ -306,6 +312,12 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     ss.value = sortMode;
     ss.addEventListener("change", function () { sortMode = ss.value; store("td-sort", sortMode); render(); });
     so.appendChild(ss); sp.appendChild(so);
+    var tr = el("div", "srow"); tr.style.gridTemplateColumns = "1fr 160px"; tr.appendChild(el("span", "", "Theme"));
+    var ts = document.createElement("select");
+    [["system", "Match Windows"], ["light", "Light"], ["dark", "Dark"]].forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; ts.appendChild(op); });
+    ts.value = theme;
+    ts.addEventListener("change", function () { theme = ts.value; store("td-theme", theme); applyTheme(); });
+    tr.appendChild(ts); sp.appendChild(tr);
     sp.appendChild(el("div", "pmsg", "Card colors: yellow when open is over the first number, red when over the second. Blank boxes use the Everyone value."));
     var hr = el("div", "srow head"); hr.appendChild(el("span")); hr.appendChild(el("span", "", "Yellow")); hr.appendChild(el("span", "", "Red")); sp.appendChild(hr);
     var all = el("div", "srow all"); all.appendChild(el("span", "", "Everyone"));
@@ -334,7 +346,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var ex = el("div", "btns");
     var cp = el("button", "btn", "Copy settings"); cp.type = "button";
     cp.addEventListener("click", function () {
-      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec, cardH: cardH, sort: sortMode, order: order })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
+      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec, cardH: cardH, sort: sortMode, order: order, theme: theme })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
     });
     var ps = el("button", "btn", "Paste settings"); ps.type = "button";
     var box = document.createElement("textarea"); box.hidden = true; box.rows = 3; box.style.width = "100%"; box.placeholder = "Paste settings here, then press Apply";
@@ -349,6 +361,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
         if (typeof v.cardH === "number") { cardH = v.cardH; store("td-cardh", cardH); }
         if (v.sort === "open" || v.sort === "custom") { sortMode = v.sort; store("td-sort", sortMode); }
         if (Array.isArray(v.order)) { order = v.order; store("td-order", order); }
+        if (v.theme === "system" || v.theme === "light" || v.theme === "dark") { theme = v.theme; store("td-theme", theme); applyTheme(); }
         buildAgents(); buildSettings(); render();
       } catch (e) { ap.textContent = "Not valid settings"; }
     });
@@ -391,6 +404,9 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
   }
 
   $("refresh").addEventListener("click", pull);
+  $("theme").addEventListener("click", function () { theme = isDark() ? "light" : "dark"; store("td-theme", theme); applyTheme(); });
+  if (window.matchMedia) window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  applyTheme();
   $("search").addEventListener("input", runSearch);
   $("search").addEventListener("keydown", function (e) { if (e.key === "Escape") { e.target.value = ""; runSearch(); } });
   $("gear").addEventListener("click", function () { var sp = $("settings"); if (sp.hidden) { buildSettings(); sp.hidden = false; } else sp.hidden = true; });
@@ -407,6 +423,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       w.document.title = "Ticket Dashboard";
       ["fit", "settings", "panel"].forEach(function (id) { w.document.body.appendChild(document.getElementById(id)); });
       pip = w;
+      applyTheme();
       popBtn.textContent = "Pop in";
       document.body.appendChild(el("div", "pmsg", "Ticket Dashboard is popped out. Close the floating window to bring it back here."));
       w.addEventListener("resize", function () {
