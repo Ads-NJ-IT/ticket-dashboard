@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.2.0
+// @version      1.3.0
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -9,7 +9,7 @@
 // @updateURL    https://raw.githubusercontent.com/Ads-NJ-IT/ticket-dashboard/main/ticket-dashboard.user.js
 // @downloadURL  https://raw.githubusercontent.com/Ads-NJ-IT/ticket-dashboard/main/ticket-dashboard.user.js
 // ==/UserScript==
-var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\n  --muted: #5f6f7e;\n  --line: #dde3e9;\n  --open: #1f7a95;\n  --pend: #c98a1b;\n  --warn: #b83a3a;\n  --warn-bg: #fbeeee;\n  --font: \"Segoe UI\", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;\n}\n@media (prefers-color-scheme: dark) {\n  :root:not([data-theme=\"light\"]) {\n    --bg: #12181e; --card: #1a232b; --ink: #e8eef3; --muted: #8fa1b1; --line: #2a3640;\n    --open: #4fb8d3; --pend: #e0a540; --warn: #ee7b7b; --warn-bg: #2d1d1f;\n    color-scheme: dark;\n  }\n}\n:root[data-theme=\"dark\"] {\n  --bg: #12181e; --card: #1a232b; --ink: #e8eef3; --muted: #8fa1b1; --line: #2a3640;\n  --open: #4fb8d3; --pend: #e0a540; --warn: #ee7b7b; --warn-bg: #2d1d1f;\n  color-scheme: dark;\n}\n* { box-sizing: border-box; }\nhtml, body { margin: 0; }\nbody { background: var(--bg); color: var(--ink); font-family: var(--font); height: 100vh; overflow: hidden; }\nmain { margin: 0; padding: 10px 12px; display: flex; flex-direction: column; height: 100vh; }\nmain > * { flex-shrink: 0; }\n.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }\nbody.floating .top { -webkit-app-region: drag; app-region: drag; }\nh1 { font-size: clamp(14px, 2.4vmin, 24px); margin: 0; text-wrap: balance; }\n.status { color: var(--muted); font-size: 12px; margin-top: 2px; min-height: 16px; }\n.status.err { color: var(--warn); }\n.status:empty { display: none; }\n.btns { display: flex; gap: 6px; -webkit-app-region: no-drag; app-region: no-drag; }\nbutton { font: inherit; color: var(--ink); cursor: pointer; }\n.btn { font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }\n.btn:hover { border-color: var(--open); }\nbutton:focus-visible, a:focus-visible { outline: 2px solid var(--open); outline-offset: 1px; }\nbutton[hidden] { display: none; }\nbutton:disabled { opacity: .55; cursor: default; }\n.tiles { display: grid; grid-template-columns: repeat(var(--tcols, 4), minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }\n.tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; white-space: nowrap; overflow: hidden; }\n.tile b { display: inline; margin-right: 6px; font-size: clamp(16px, 3vmin, 36px); line-height: 1.1; font-variant-numeric: tabular-nums; }\n.tile span { color: var(--muted); font-size: clamp(11px, 1.5vmin, 16px); }\n.tile.open b { color: var(--open); }\n.tile.pend b { color: var(--pend); }\n.tile.unas { background: var(--warn-bg); border-color: var(--warn); }\n.tile.unas b { color: var(--warn); }\nh2 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 7px 0 4px; }\nh2 span { font-weight: 400; text-transform: none; letter-spacing: 0; }\n.grid { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); grid-auto-rows: var(--rowh, 120px); gap: 8px; }\n.card { container-type: size; display: flex; flex-direction: column; min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }\n.card.sel { border-color: var(--open); box-shadow: 0 0 0 1px var(--open); }\n.main { display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 0; overflow: hidden; width: 100%; text-align: left; background: none; border: 0; padding: 4cqh 6cqw 2cqh; color: inherit; font: inherit; }\nbutton.main:hover .name { color: var(--open); }\n.name { font-size: min(16cqh, 12cqw); font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.big { font-size: min(38cqh, 26cqw); font-weight: 700; line-height: 1.05; color: var(--open); font-variant-numeric: tabular-nums; }\n.big small { font-size: min(11cqh, 8cqw); font-weight: 400; color: var(--muted); margin-left: 4px; }\n.small { font-size: min(11cqh, 8.5cqw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-variant-numeric: tabular-nums; }\n.foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2cqh 5cqw 3cqh; border-top: 1px solid var(--line); }\n.when { font-size: min(8.5cqh, 6.6cqw); line-height: 1.25; color: var(--muted); white-space: nowrap; }\n.next { display: block; }\n.rbtn { font-size: min(8.5cqh, 6.6cqw); padding: 0.2em 0.7em; flex-shrink: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }\n.rbtn:hover:not(:disabled) { border-color: var(--open); }\n.card.lvl1 { border-color: var(--pend); background: color-mix(in srgb, var(--pend) 14%, var(--card)); }\n.card.lvl1 .big { color: var(--pend); }\n.card.lvl2 { border-color: var(--warn); background: var(--warn-bg); }\n.card.lvl2 .big { color: var(--warn); }\n.srow { display: grid; grid-template-columns: 1fr 70px 70px; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--line); font-size: 13px; }\n.srow.head { border-top: 0; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }\n.srow input { width: 100%; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }\n.srow.all { font-weight: 600; }\n.card.unas { background: var(--warn-bg); border-color: var(--warn); }\n.card.unas .name, .card.unas .big { color: var(--warn); }\n.card.other { border-style: dashed; }\n.card.other .name, .card.other .big { color: var(--muted); }\n.panel { position: fixed; inset: 0; z-index: 10; overflow: auto; background: var(--card); padding: 12px 14px; }\n.panel[hidden] { display: none; }\n.phead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }\n.phead b { font-size: 14px; }\n.trow { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }\n.trow a { color: var(--open); text-decoration: none; }\n.trow a:hover { text-decoration: underline; }\n.trow .subj { color: var(--ink); overflow-wrap: anywhere; }\n.pill { font-size: 11px; border-radius: 10px; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }\n.pill.o { color: var(--open); border-color: var(--open); }\n.pill.p { color: var(--pend); border-color: var(--pend); }\n.pmsg { color: var(--muted); font-size: 12px; padding: 6px 0; }\n.pmsg.err { color: var(--warn); }\n.note { color: var(--muted); font-size: 11px; margin-top: 14px; line-height: 1.5; }\n.foot { flex-wrap: nowrap; }\n.when { min-width: 0; }\nh1 { overflow-wrap: anywhere; }\n.srow.four { grid-template-columns: 1fr 100px 60px 60px; }\n.srow select { width: 100%; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px; }\n.panel .btns { margin-top: 10px; }\n.panel textarea { margin-top: 8px; font: 12px monospace; }\n";
+var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\n  --muted: #5f6f7e;\n  --line: #dde3e9;\n  --open: #1f7a95;\n  --pend: #c98a1b;\n  --warn: #b83a3a;\n  --warn-bg: #fbeeee;\n  --font: \"Segoe UI\", system-ui, -apple-system, Roboto, Helvetica, Arial, sans-serif;\n}\n@media (prefers-color-scheme: dark) {\n  :root:not([data-theme=\"light\"]) {\n    --bg: #12181e; --card: #1a232b; --ink: #e8eef3; --muted: #8fa1b1; --line: #2a3640;\n    --open: #4fb8d3; --pend: #e0a540; --warn: #ee7b7b; --warn-bg: #2d1d1f;\n    color-scheme: dark;\n  }\n}\n:root[data-theme=\"dark\"] {\n  --bg: #12181e; --card: #1a232b; --ink: #e8eef3; --muted: #8fa1b1; --line: #2a3640;\n  --open: #4fb8d3; --pend: #e0a540; --warn: #ee7b7b; --warn-bg: #2d1d1f;\n  color-scheme: dark;\n}\n* { box-sizing: border-box; }\nhtml, body { margin: 0; }\nbody { background: var(--bg); color: var(--ink); font-family: var(--font); height: 100vh; overflow: hidden; }\nmain { margin: 0; padding: 10px 12px; display: flex; flex-direction: column; height: 100vh; }\nmain > * { flex-shrink: 0; }\n.top { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }\nbody.floating .top { -webkit-app-region: drag; app-region: drag; }\nh1 { font-size: clamp(14px, 2.4vmin, 24px); margin: 0; text-wrap: balance; }\n.status { color: var(--muted); font-size: 12px; margin-top: 2px; min-height: 16px; }\n.status.err { color: var(--warn); }\n.status:empty { display: none; }\n.btns { display: flex; gap: 6px; -webkit-app-region: no-drag; app-region: no-drag; }\nbutton { font: inherit; color: var(--ink); cursor: pointer; }\n.btn { font-size: 12px; background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 5px 10px; }\n.btn:hover { border-color: var(--open); }\nbutton:focus-visible, a:focus-visible { outline: 2px solid var(--open); outline-offset: 1px; }\nbutton[hidden] { display: none; }\nbutton:disabled { opacity: .55; cursor: default; }\n.tiles { display: grid; grid-template-columns: repeat(var(--tcols, 4), minmax(0, 1fr)); gap: 8px; margin-bottom: 8px; }\n.tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 4px 10px; white-space: nowrap; overflow: hidden; }\n.tile b { display: inline; margin-right: 6px; font-size: clamp(16px, 3vmin, 36px); line-height: 1.1; font-variant-numeric: tabular-nums; }\n.tile span { color: var(--muted); font-size: clamp(11px, 1.5vmin, 16px); }\n.tile.open b { color: var(--open); }\n.tile.pend b { color: var(--pend); }\n.tile.unas { background: var(--warn-bg); border-color: var(--warn); }\n.tile.unas b { color: var(--warn); }\nh2 { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 12px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 7px 0 4px; }\nh2 span { font-weight: 400; text-transform: none; letter-spacing: 0; }\n.grid { display: grid; grid-template-columns: repeat(var(--cols, 5), minmax(0, 1fr)); grid-auto-rows: var(--rowh, 120px); gap: 8px; }\n.card { container-type: size; display: flex; flex-direction: column; min-height: 0; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }\n.card.sel { border-color: var(--open); box-shadow: 0 0 0 1px var(--open); }\n.main { display: flex; flex-direction: column; justify-content: center; flex: 1; min-height: 0; overflow: hidden; width: 100%; text-align: left; background: none; border: 0; padding: 4cqh 6cqw 2cqh; color: inherit; font: inherit; }\n.main { cursor: pointer; }\n.main:hover .name { color: var(--open); }\n.card[draggable=true] { cursor: grab; }\n.card.dragging { opacity: .4; }\n.card.dropto { outline: 2px dashed var(--open); outline-offset: 2px; }\n.grid:empty { min-height: 40px; border: 1px dashed var(--line); border-radius: 10px; }\n.grid.dropzone { outline: 2px dashed var(--line); outline-offset: 3px; border-radius: 10px; min-height: 40px; }\n.name { font-size: min(16cqh, 12cqw); font-weight: 700; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }\n.big { font-size: min(38cqh, 26cqw); font-weight: 700; line-height: 1.05; color: var(--open); font-variant-numeric: tabular-nums; }\n.big small { font-size: min(11cqh, 8cqw); font-weight: 400; color: var(--muted); margin-left: 4px; }\n.small { font-size: min(11cqh, 8.5cqw); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--muted); font-variant-numeric: tabular-nums; }\n.foot { display: flex; justify-content: space-between; align-items: center; gap: 6px; padding: 2cqh 5cqw 3cqh; border-top: 1px solid var(--line); }\n.when { font-size: min(8.5cqh, 6.6cqw); line-height: 1.25; color: var(--muted); white-space: nowrap; }\n.next { display: block; }\n.rbtn { font-size: min(8.5cqh, 6.6cqw); padding: 0.2em 0.7em; flex-shrink: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }\n.rbtn:hover:not(:disabled) { border-color: var(--open); }\n.card.lvl1 { border-color: var(--pend); background: color-mix(in srgb, var(--pend) 14%, var(--card)); }\n.card.lvl1 .big { color: var(--pend); }\n.card.lvl2 { border-color: var(--warn); background: var(--warn-bg); }\n.card.lvl2 .big { color: var(--warn); }\n.srow { display: grid; grid-template-columns: 1fr 70px 70px; gap: 8px; align-items: center; padding: 5px 0; border-top: 1px solid var(--line); font-size: 13px; }\n.srow.head { border-top: 0; color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .04em; }\n.srow input { width: 100%; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; }\n.srow.all { font-weight: 600; }\n.card.unas { background: var(--warn-bg); border-color: var(--warn); }\n.card.unas .name, .card.unas .big { color: var(--warn); }\n.card.other { border-style: dashed; }\n.card.other .name, .card.other .big { color: var(--muted); }\n.panel { position: fixed; inset: 0; z-index: 10; overflow: auto; background: var(--card); padding: 12px 14px; }\n.panel[hidden] { display: none; }\n.phead { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 6px; }\n.phead b { font-size: 14px; }\n.trow { display: grid; grid-template-columns: 56px 1fr auto; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; }\n.trow a { color: var(--open); text-decoration: none; }\n.trow a:hover { text-decoration: underline; }\n.trow .subj { color: var(--ink); overflow-wrap: anywhere; }\n.pill { font-size: 11px; border-radius: 10px; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }\n.pill.o { color: var(--open); border-color: var(--open); }\n.pill.p { color: var(--pend); border-color: var(--pend); }\n.pmsg { color: var(--muted); font-size: 12px; padding: 6px 0; }\n.pmsg.err { color: var(--warn); }\n.note { color: var(--muted); font-size: 11px; margin-top: 14px; line-height: 1.5; }\n.foot { flex-wrap: nowrap; }\n.when { min-width: 0; }\nh1 { overflow-wrap: anywhere; }\n.srow.four { grid-template-columns: 1fr 100px 60px 60px; }\n.srow select { width: 100%; font: inherit; font-size: 13px; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 4px; }\n.panel .btns { margin-top: 10px; }\n.panel textarea { margin-top: 8px; font: 12px monospace; }\n";
 (function () {
   "use strict";
   /* Ticket Dashboard. Runs on https://adsofnjinc.freshservice.com/a/ticket-dashboard using your logged-in Freshservice session. */
@@ -46,6 +46,10 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
 
   var thr = store("td-thr") || { all: [20, 25], per: {} };
   var autoSec = store("td-autosec"); if (typeof autoSec !== "number") autoSec = 60;
+  var sortMode = store("td-sort") || "open";  /* "open" = most open first, "custom" = your drag order */
+  var order = store("td-order") || [];         /* agent ids in your order */
+  var shown = [];                              /* agent ids in the order they are on screen */
+  var dragId = null;
   var cardH = store("td-cardh"); if (typeof cardH !== "number") cardH = 110;  /* max card height in px, 0 fills the window */
   var tickets = store("td-tickets") || null, pulledAt = store("td-at") || 0;
   var teams = store("td-teams") || {};  /* agent id -> "ph" | "hide"; missing means US team */
@@ -124,13 +128,16 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       var t = el("div", "tile " + x[0]); t.appendChild(el("b", "", String(x[1]))); t.appendChild(el("span", "", x[2])); tiles.appendChild(t);
     });
 
-    function card(host, cls, name, key, b) {
+    function card(host, cls, name, key, b, agentId, team) {
       var c = el("div", "card " + cls + (openKey === key ? " sel" : ""));
-      var m = el("button", "main"); m.type = "button";
-      m.addEventListener("click", function () {
+      var m = el("div", "main"); m.tabIndex = 0; m.setAttribute("role", "button");
+      function act() {
         if (key === "unas") window.open(UNASSIGNED_VIEW, "_blank", "noopener");
         else showList(key, name, b.list);
-      });
+      }
+      m.addEventListener("click", act);
+      m.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(); } });
+      if (agentId) dragCard(c, agentId, team);
       m.appendChild(el("div", "name", name));
       var big = el("div", "big", String(b.o)); big.appendChild(el("small", "", "open")); m.appendChild(big);
       m.appendChild(el("div", "small", b.p + " pending, " + (b.o + b.p) + " total"));
@@ -140,6 +147,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       c.appendChild(f);
       host.appendChild(c);
     }
+    shown = [];
     var gu = $("gridUnas"); gu.textContent = "";
     card(gu, "unas", "Unassigned", "unas", unas);
     card(gu, "other", "Managers and inactive", "other", other);
@@ -147,15 +155,50 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       var host = $(hostId); host.textContent = "";
       var rows = AGENTS.filter(function (a) { return a[2] === g; }).map(function (a) { var b = bucket(by[a[1]] || []); b.name = a[0]; b.id = a[1]; return b; });
       rows.sort(function (x, y) { return y.o - x.o || (y.o + y.p) - (x.o + x.p); });
+      if (sortMode === "custom") {
+        var pos = function (id) { var i = order.indexOf(id); return i < 0 ? 1e6 : i; };
+        rows.sort(function (x, y) { return pos(x.id) - pos(y.id); });  /* stable, so techs not in your order stay by most open */
+      }
+      rows.forEach(function (r) { shown.push(r.id); });
+      dropZone(host, g);
       var ho = 0, hp = 0; rows.forEach(function (r) { ho += r.o; hp += r.p; });
       var head = $(headId); head.textContent = title; head.appendChild(el("span", "", ho + " open, " + hp + " pending, " + (ho + hp) + " total"));
-      rows.forEach(function (r) { card(host, levelCls(r.name, r.o), r.name, "a" + r.id, r); });
+      rows.forEach(function (r) { card(host, levelCls(r.name, r.o), r.name, "a" + r.id, r, r.id, g); });
     }
     group("gridTeam", "teamHead", "US team", "us");
     group("gridPh", "phHead", "PH team", "ph");
     $("refresh").disabled = busy;
     paintStatus();
     layout();
+  }
+
+  /* Drag and drop: drag a tech card onto another to put it there. Dropping into the other team moves the tech to that team. */
+  function moveTech(id, beforeId, team) {
+    var list = shown.filter(function (x) { return x !== id; });
+    var i = beforeId != null ? list.indexOf(beforeId) : -1;
+    if (i < 0) { /* end of that team */
+      var last = -1; list.forEach(function (x, k) { if ((teams[x] || "us") === team) last = k; });
+      i = last + 1;
+    }
+    list.splice(i, 0, id);
+    order = list; sortMode = "custom";
+    if (team === "us") delete teams[id]; else teams[id] = team;
+    store("td-order", order); store("td-sort", sortMode); store("td-teams", teams);
+    buildAgents(); render();
+  }
+  function clearDrop() { view().document.querySelectorAll(".dropto,.dropzone").forEach(function (n) { n.classList.remove("dropto", "dropzone"); }); }
+  function dragCard(c, id, team) {
+    c.draggable = true;
+    c.addEventListener("dragstart", function (e) { dragId = id; c.classList.add("dragging"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(id)); });
+    c.addEventListener("dragend", function () { dragId = null; c.classList.remove("dragging"); clearDrop(); });
+    c.addEventListener("dragover", function (e) { if (dragId == null || dragId === id) return; e.preventDefault(); e.stopPropagation(); clearDrop(); c.classList.add("dropto"); });
+    c.addEventListener("drop", function (e) { if (dragId == null || dragId === id) return; e.preventDefault(); e.stopPropagation(); var d = dragId; dragId = null; clearDrop(); moveTech(d, id, team); });
+  }
+  function dropZone(host, team) {
+    if (host.__dz) { host.__dz = team; return; }
+    host.__dz = team;
+    host.addEventListener("dragover", function (e) { if (dragId == null) return; e.preventDefault(); clearDrop(); host.classList.add("dropzone"); });
+    host.addEventListener("drop", function (e) { if (dragId == null) return; e.preventDefault(); var d = dragId; dragId = null; clearDrop(); moveTech(d, null, host.__dz); });
   }
 
   function paintStatus() {
@@ -206,6 +249,12 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var hi = document.createElement("input"); hi.type = "number"; hi.min = "0"; hi.value = cardH;
     hi.addEventListener("change", function () { var n = num(hi.value); cardH = n == null ? 0 : (n && n < 50 ? 50 : n); store("td-cardh", cardH); layout(); });
     hr0.appendChild(hi); sp.appendChild(hr0);
+    var so = el("div", "srow"); so.style.gridTemplateColumns = "1fr 160px"; so.appendChild(el("span", "", "Card order (drag cards on the dashboard to set your own order)"));
+    var ss = document.createElement("select");
+    [["open", "Most open first"], ["custom", "My order"]].forEach(function (o) { var op = el("option", "", o[1]); op.value = o[0]; ss.appendChild(op); });
+    ss.value = sortMode;
+    ss.addEventListener("change", function () { sortMode = ss.value; store("td-sort", sortMode); render(); });
+    so.appendChild(ss); sp.appendChild(so);
     sp.appendChild(el("div", "pmsg", "Card colors: yellow when open is over the first number, red when over the second. Blank boxes use the Everyone value."));
     var hr = el("div", "srow head"); hr.appendChild(el("span")); hr.appendChild(el("span", "", "Yellow")); hr.appendChild(el("span", "", "Red")); sp.appendChild(hr);
     var all = el("div", "srow all"); all.appendChild(el("span", "", "Everyone"));
@@ -234,7 +283,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var ex = el("div", "btns");
     var cp = el("button", "btn", "Copy settings"); cp.type = "button";
     cp.addEventListener("click", function () {
-      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec, cardH: cardH })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
+      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec, cardH: cardH, sort: sortMode, order: order })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
     });
     var ps = el("button", "btn", "Paste settings"); ps.type = "button";
     var box = document.createElement("textarea"); box.hidden = true; box.rows = 3; box.style.width = "100%"; box.placeholder = "Paste settings here, then press Apply";
@@ -247,6 +296,8 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
         if (v.thr && v.thr.all && v.thr.per) { thr = v.thr; store("td-thr", thr); }
         if (typeof v.autoSec === "number") { autoSec = v.autoSec; store("td-autosec", autoSec); }
         if (typeof v.cardH === "number") { cardH = v.cardH; store("td-cardh", cardH); }
+        if (v.sort === "open" || v.sort === "custom") { sortMode = v.sort; store("td-sort", sortMode); }
+        if (Array.isArray(v.order)) { order = v.order; store("td-order", order); }
         buildAgents(); buildSettings(); render();
       } catch (e) { ap.textContent = "Not valid settings"; }
     });

@@ -6,7 +6,11 @@ A Tampermonkey userscript that shows open and pending Freshservice tickets per t
 1. Install Tampermonkey (Chrome Web Store or Edge Add-ons). In Chrome, turn on **Allow User Scripts** in the extension's Details page.
 2. Open https://raw.githubusercontent.com/Ads-NJ-IT/ticket-dashboard/main/ticket-dashboard.user.js and click **Install**.
 3. Go to https://adsofnjinc.freshservice.com/a/ticket-dashboard while logged in to Freshservice.
-4. Optional: install the page as an app (Edge: Apps > Install this site as an app. Chrome: Cast, save and share > Create shortcut > Open as window).
+4. Optional, own window: make a desktop shortcut to `"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --app=https://adsofnjinc.freshservice.com/a/ticket-dashboard` (or in Chrome: Cast, save and share > Create shortcut > Open as window).
+5. Optional, always on top: use **Pop out**, or PowerToys Always On Top (Win+Ctrl+T).
+
+## Arranging cards
+Drag a tech card onto another card to put it there. Drop it into the other team to move the tech to that team. Settings > Card order switches between Most open first and My order.
 
 ## Settings
 **Pop out** (Chrome and Edge) opens the dashboard in a small floating window that stays on top of other windows. Close it to bring the dashboard back.
