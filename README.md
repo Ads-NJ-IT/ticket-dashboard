@@ -9,6 +9,9 @@ A Tampermonkey userscript that shows open and pending Freshservice tickets per t
 4. Optional, own window: make a desktop shortcut to `"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe" --app=https://adsofnjinc.freshservice.com/a/ticket-dashboard` (or in Chrome: Cast, save and share > Create shortcut > Open as window).
 5. Optional, always on top: use **Pop out**, or PowerToys Always On Top (Win+Ctrl+T).
 
+## Search
+The search box (top right) searches every open and pending ticket from the last refresh by ticket number, subject, requester name or email, and assigned tech. Every word must match. Esc clears it.
+
 ## Arranging cards
 Drag a tech card onto another card to put it there. Drop it into the other team to move the tech to that team. Settings > Card order switches between Most open first and My order.
 
