@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.8.1
+// @version      1.9.0
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -50,6 +50,15 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       var l = document.createElement("link"); l.rel = "icon"; l.type = "image/png"; l.sizes = n + "x" + n; l.href = drawIcon(n);
       document.head.appendChild(l);
     });
+    /* App manifest, so Edge and Chrome offer "Install Ticket Dashboard" (the app icon in the address bar). */
+    var start = location.origin + "/a/ticket-dashboard";
+    var man = { name: "Ticket Dashboard", short_name: "Tickets", id: start, start_url: start, scope: start, display: "standalone",
+      background_color: "#f4f6f8", theme_color: "#1f7a95",
+      icons: [{ src: drawIcon(192), sizes: "192x192", type: "image/png" }, { src: drawIcon(512), sizes: "512x512", type: "image/png" }] };
+    var ml = document.createElement("link"); ml.rel = "manifest";
+    ml.href = "data:application/manifest+json," + encodeURIComponent(JSON.stringify(man));
+    document.head.appendChild(ml);
+    var tc = document.createElement("meta"); tc.name = "theme-color"; tc.content = "#1f7a95"; document.head.appendChild(tc);
   } catch (e) {}
 
   function $(id) { return view().document.getElementById(id); }
