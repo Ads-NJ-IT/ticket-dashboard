@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.0.0
+// @version      1.1.0
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -16,6 +16,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
   var WS = "2";                       /* My Team workspace */
   var PER = 100;                      /* tickets per call, the most Freshservice allows */
   var BASE = "/a/tickets/";
+  var UNASSIGNED_VIEW = "/a/tickets/view/16000285610";  /* Freshservice "Unassigned" view: Open, no agent, My Team */
   /* Techs come from your Freshservice agent list. Which team each one is on is set in Settings and saved in this browser. */
   var AGENTS = [];     /* [name, id, "us" | "ph"], built from agentsAll + teams */
   var agentsAll = [];  /* every active agent: {id, name} */
@@ -42,6 +43,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
 
   var thr = store("td-thr") || { all: [20, 25], per: {} };
   var autoSec = store("td-autosec"); if (typeof autoSec !== "number") autoSec = 60;
+  var cardH = store("td-cardh"); if (typeof cardH !== "number") cardH = 110;  /* max card height in px, 0 fills the window */
   var tickets = store("td-tickets") || null, pulledAt = store("td-at") || 0;
   var teams = store("td-teams") || {};  /* agent id -> "ph" | "hide"; missing means US team */
   function buildAgents() {
@@ -122,7 +124,10 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     function card(host, cls, name, key, b) {
       var c = el("div", "card " + cls + (openKey === key ? " sel" : ""));
       var m = el("button", "main"); m.type = "button";
-      m.addEventListener("click", function () { showList(key, name, b.list); });
+      m.addEventListener("click", function () {
+        if (key === "unas") window.open(UNASSIGNED_VIEW, "_blank", "noopener");
+        else showList(key, name, b.list);
+      });
       m.appendChild(el("div", "name", name));
       var big = el("div", "big", String(b.o)); big.appendChild(el("small", "", "open")); m.appendChild(big);
       m.appendChild(el("div", "small", b.p + " pending, " + (b.o + b.p) + " total"));
@@ -194,6 +199,10 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var ai = document.createElement("input"); ai.type = "number"; ai.min = "0"; ai.value = autoSec;
     ai.addEventListener("change", function () { var n = num(ai.value); autoSec = n == null ? 0 : (n && n < 15 ? 15 : n); store("td-autosec", autoSec); nextAt = Date.now() + autoSec * 1000; paintStatus(); });
     ar.appendChild(ai); sp.appendChild(ar);
+    var hr0 = el("div", "srow"); hr0.appendChild(el("span", "", "Card height (pixels, 0 fills the window)"));
+    var hi = document.createElement("input"); hi.type = "number"; hi.min = "0"; hi.value = cardH;
+    hi.addEventListener("change", function () { var n = num(hi.value); cardH = n == null ? 0 : (n && n < 50 ? 50 : n); store("td-cardh", cardH); layout(); });
+    hr0.appendChild(hi); sp.appendChild(hr0);
     sp.appendChild(el("div", "pmsg", "Card colors: yellow when open is over the first number, red when over the second. Blank boxes use the Everyone value."));
     var hr = el("div", "srow head"); hr.appendChild(el("span")); hr.appendChild(el("span", "", "Yellow")); hr.appendChild(el("span", "", "Red")); sp.appendChild(hr);
     var all = el("div", "srow all"); all.appendChild(el("span", "", "Everyone"));
@@ -222,7 +231,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
     var ex = el("div", "btns");
     var cp = el("button", "btn", "Copy settings"); cp.type = "button";
     cp.addEventListener("click", function () {
-      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
+      navigator.clipboard.writeText(JSON.stringify({ teams: teams, thr: thr, autoSec: autoSec, cardH: cardH })).then(function () { cp.textContent = "Copied"; }, function () { cp.textContent = "Copy failed"; });
     });
     var ps = el("button", "btn", "Paste settings"); ps.type = "button";
     var box = document.createElement("textarea"); box.hidden = true; box.rows = 3; box.style.width = "100%"; box.placeholder = "Paste settings here, then press Apply";
@@ -234,6 +243,7 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
         if (v.teams && typeof v.teams === "object") { teams = v.teams; store("td-teams", teams); }
         if (v.thr && v.thr.all && v.thr.per) { thr = v.thr; store("td-thr", thr); }
         if (typeof v.autoSec === "number") { autoSec = v.autoSec; store("td-autosec", autoSec); }
+        if (typeof v.cardH === "number") { cardH = v.cardH; store("td-cardh", cardH); }
         buildAgents(); buildSettings(); render();
       } catch (e) { ap.textContent = "Not valid settings"; }
     });
@@ -261,8 +271,10 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
       var gaps = rows.reduce(function (a, r) { return a + (r - 1) * GAP; }, 0);
       var rh = (vh - fixed - gaps - 2) / total, cw = (W - (c - 1) * GAP) / c;
       if (rh < 20 || cw < 40) continue;
+      if (cardH > 0) rh = Math.min(rh, cardH);
       var score = Math.min(cw, rh * 1.6);
-      if (!best || score > best.score) best = { c: c, rh: rh, score: score };
+      /* on a tie, prefer more columns so capped cards stay compact */
+      if (!best || score > best.score + 0.5 || (Math.abs(score - best.score) <= 0.5 && c > best.c)) best = { c: c, rh: rh, score: score };
     }
     if (!best) best = { c: 4, rh: 60 };
     fit.style.setProperty("--cols", best.c);
