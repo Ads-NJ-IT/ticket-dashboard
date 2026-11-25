@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Ticket Dashboard (Freshservice)
 // @namespace    https://github.com/Ads-NJ-IT/ticket-dashboard
-// @version      1.8.0
+// @version      1.8.1
 // @description  Open and pending tickets per tech, using your logged-in Freshservice session. Open https://adsofnjinc.freshservice.com/a/ticket-dashboard
 // @match        https://adsofnjinc.freshservice.com/a/ticket-dashboard*
 // @run-at       document-start
@@ -35,6 +35,23 @@ var CSS = "\n\n:root {\n  --bg: #f4f6f8;\n  --card: #ffffff;\n  --ink: #16212b;\
   /* While popped out, the dashboard lives in a floating picture-in-picture window. view is whichever window shows it. */
   var pip = null;
   function view() { return pip || window; }
+  /* Own icon, so the window and taskbar show Ticket Dashboard instead of the Freshservice logo. */
+  function drawIcon(size) {
+    var c = document.createElement("canvas"); c.width = c.height = size;
+    var g = c.getContext("2d"), r = size * 0.2;
+    g.fillStyle = "#1f7a95"; g.beginPath(); g.moveTo(r, 0); g.arcTo(size, 0, size, size, r); g.arcTo(size, size, 0, size, r); g.arcTo(0, size, 0, 0, r); g.arcTo(0, 0, size, 0, r); g.fill();
+    g.fillStyle = "#ffffff";
+    var bars = [0.45, 0.7, 0.35, 0.58], w = size * 0.13, gap = size * 0.07, x = size * 0.16, base = size * 0.82;
+    bars.forEach(function (h) { g.fillRect(x, base - h * size * 0.7, w, h * size * 0.7); x += w + gap; });
+    return c.toDataURL("image/png");
+  }
+  try {
+    [16, 32, 192].forEach(function (n) {
+      var l = document.createElement("link"); l.rel = "icon"; l.type = "image/png"; l.sizes = n + "x" + n; l.href = drawIcon(n);
+      document.head.appendChild(l);
+    });
+  } catch (e) {}
+
   function $(id) { return view().document.getElementById(id); }
   function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e; }
   function store(k, v) { try { if (v === undefined) return JSON.parse(localStorage.getItem(k) || "null"); localStorage.setItem(k, JSON.stringify(v)); } catch (e) { return null; } }
